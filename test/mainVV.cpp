@@ -15,10 +15,12 @@
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 
+#include <ctime>
+#include <omp.h>
+
 
 using namespace std;
 
-//---------------------------------------------
 #define epsilon 1.e-3 // avoid numerical precision issues
 
 // default logging macro (no ; at end to force user using common function syntax)
@@ -253,9 +255,9 @@ bool loadPly(const string &filepath,
 void configure_parser(cli::Parser & parser)
 {
     parser.set_optional<int>("th", "N_theta", 8000, "the resulted panoramic width");
-    parser.set_optional<int>("ph", "N_phi", 3000, "the resulted panoramic height");
-    parser.set_optional<float>("ph_min", "phi_min", -M_PI/6, "PHI lower boundary");
-    parser.set_optional<float>("ph_max", "phi_max", 80.0f * M_PI/180.f, "PHI upper boundary" );
+    parser.set_optional<int>("ph", "N_phi", 3200, "the resulted panoramic height");
+    parser.set_optional<float>("ph_min", "phi_min",10.0f* M_PI/180.0f, "PHI lower boundary");
+    parser.set_optional<float>("ph_max", "phi_max", 130.0f * M_PI/180.0f, "PHI upper boundary" );
     parser.set_required<vector<string>>("i", "values", "images_1...N ply_file");
 }
 
@@ -282,6 +284,7 @@ struct Orimg
 
 int main(int argc, char **argv)
 {
+
     cli::Parser parser(argc, argv);
     configure_parser(parser);
     parser.run_and_exit_if_error();
@@ -321,31 +324,47 @@ int main(int argc, char **argv)
     }
 
     Point sommet_central(sommet_x/correspondance_orimg.size(), sommet_y/correspondance_orimg.size(), sommet_z/correspondance_orimg.size());
-    cout << "x = " << sommet_central.x << " y = " << sommet_central.y << " z = " << sommet_central.z << endl;
+    //cout << "x = " << sommet_central.x << " y = " << sommet_central.y << " z = " << sommet_central.z << endl;
 
     string rgb_img = "rgb.jpg";
     string intensity_img = "intensity.jpg";
-    string depth_img = "depth.jpg";
+    string depth_img = "depth.png";
     double theta_i, phi_j, x, y, z, c, l;
     vector<Pixel> cl;
     vector<int> idx;
     bool ok;
+    int i ,j;
 
     cv::Mat rgb(N_phi, N_theta, CV_8UC3);
-    cv::Mat depth(N_phi, N_theta, CV_8UC1);
+    cv::Mat depth(N_phi, N_theta, CV_16UC1);
     cv::Mat intensity(N_phi, N_theta, CV_8UC3);
     cout << "Building kdtree..." << endl;
     KdTreeAccel kdtree(prims); // TODO: play with the params
     int n_inter=0;
-    float d_norm = 255.f/20.f;
+    float d_norm = 65535.f/30.f;
+//    clock_t start = clock();
+//    start = clock();
+    //-------------------------------
+    //BM
+
+//    unsigned int thread_qty = std::max(atoi(std::getenv("OMP_NUM_THREADS")), 1);
+//    omp_set_num_threads(thread_qty);
+#pragma omp parallel for \
+    shared(rgb, depth, intensity) \
+    private(i, j, theta_i, phi_j, x, y, z, c, l, cl, idx, ok)\
+    firstprivate(N_theta, N_phi, phi_max, phi_min, sommet_central, d_norm)\
+    reduction(+:n_inter)
+#pragma omp shedule(dynamic)
+    //-------------------------------
     for (int i=0; i<N_theta; i++)
     {
         theta_i = 2*M_PI*i/N_theta;
         for (int j=0; j<N_phi; j++)
         {
-            phi_j = (phi_min + j*(phi_max - phi_min))/N_phi*(phi_max - phi_min);
+            //phi_j_1 = (phi_min + j*(phi_max - phi_min))/N_phi*(phi_max - phi_min);
+            phi_j = phi_min + (j * (phi_max - phi_min)/N_phi);
             x = cos(theta_i)*sin(phi_j)*1.e3;
-            y = sin(theta_i)*sin(phi_j)*1.e3;
+            y = -sin(theta_i)*sin(phi_j)*1.e3;
             z = cos(phi_j)*1.e3;
 
             Vector spheric(x,y,z);
@@ -353,24 +372,25 @@ int main(int argc, char **argv)
             cv::Point3d projectionPoint(sommet_central.x + x, sommet_central.y + y, sommet_central.z + z);
             //if(j%100==0 && i%100==0) cout << "projectionPoint=" << projectionPoint << endl;
             Intersection isect;
-            unsigned char dc = 0, rc=0, gc=0, bc=0;
+            unsigned char rc=0, gc=0, bc=0;
+            unsigned short dc=0;
             if(kdtree.Intersect(ray,&isect))
             {
-                n_inter++;
+                n_inter+=1;
                 Vector v = isect.dg.p - sommet_central;
                 float d = d_norm*v.Length();
                 if(d<0.f) d=0.f;
-                if(d>255.f) d=255.f;
-                dc = (unsigned char)(255.-d);
+                if(d>65535.f) d=65535.f;
+                dc = (unsigned short)(65535.-d);
                 rc = (unsigned char)isect.dg.dudx;
                 gc = (unsigned char)isect.dg.dvdx;
                 bc = (unsigned char)isect.dg.dudy;
             }
-            depth.at<unsigned char>(j,i)=dc;
+            depth.at<unsigned short>(j,i)=dc;
             intensity.at<cv::Vec3b>(j,i)[0]=bc;
             intensity.at<cv::Vec3b>(j,i)[1]=gc;
             intensity.at<cv::Vec3b>(j,i)[2]=rc;
-            if(i%100==0 && j==0) cout << i << "/" << N_theta << " " << n_inter << endl;
+//            if(i%1000==0 && j==0) cout << i << "/" << N_theta << " " << n_inter << endl;
 
             int n_proj=0;
             for(int it=0; it<correspondance_orimg.size(); it++)
@@ -388,7 +408,7 @@ int main(int argc, char **argv)
                             cl.push_back(Pixel(ic,il));
                             n_proj++;
                         }
-                     }
+                    }
                 }
             }
             if(n_proj < 1)
@@ -418,5 +438,35 @@ int main(int argc, char **argv)
     cv::imwrite(rgb_img, rgb);
     cv::imwrite(depth_img, depth);
     cv::imwrite(intensity_img, intensity);
+
+//    cout << "Done in " << (double)(clock() - start) / (double) CLOCKS_PER_SEC << "s" << endl;
+    cv::Point3d d0, d1, direction, s, s_pivot;
+    double height, width;
+    height = correspondance_orimg.at(1).nl;
+    width = correspondance_orimg.at(1).nc;
+    correspondance_orimg.at(1).ori.ImageToGroundVec(width/2,height/2,d0.x,d0.y,d0.z,d1.x,d1.y,d1.z); //calculate the vehicle direction using the front image
+    direction = d1 - d0;
+    s_pivot.x = sommet_central.x + pivot.x;
+    s_pivot.y = sommet_central.y + pivot.y;
+    s_pivot.z = sommet_central.z + pivot.z;
+
+    s.x = sommet_central.x;
+    s.y = sommet_central.y;
+    s.z = sommet_central.z;
+
+    ofstream panoramic_info;
+    panoramic_info.open("info.txt", ios::out | ios::app);
+
+    panoramic_info << s_pivot << endl;
+    panoramic_info << s << endl;
+    panoramic_info << 2 * M_PI/N_theta << endl;
+    panoramic_info << "Phi = " << phi_min << " + row * " << (phi_max - phi_min)/N_phi << endl;
+    panoramic_info << atan2(direction.y,direction.x) << endl;
+
+    panoramic_info.close();
+
+
+
+    /*--------------END Modification---------------*/
     return 0;
 }
