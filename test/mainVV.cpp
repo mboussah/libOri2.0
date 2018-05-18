@@ -400,7 +400,7 @@ int main(int argc, char **argv)
                 if(ok)
                 {
                     int ic=c, il=l;
-                    if(ic>=0 && il>=0 && ic<orimg.nc && il<orimg.nl)
+                    if(ic>=0 && il>=0 && ic<orimg.nc-3 && il<orimg.nl-3)
                     {
                         if(((projectionPoint-orimg.P0).dot(orimg.V)) > 0)
                         {
@@ -462,6 +462,18 @@ int main(int argc, char **argv)
     panoramic_info << 2 * M_PI/N_theta << endl;
     panoramic_info << "Phi = " << phi_min << " + row * " << (phi_max - phi_min)/N_phi << endl;
     panoramic_info << atan2(direction.y,direction.x) << endl;
+    panoramic_info << correspondance_orimg.at(1).ori.extrinsic().sommet()[0] << endl;
+    panoramic_info << correspondance_orimg.at(1).ori.extrinsic().sommet()[1] << endl;
+    panoramic_info << correspondance_orimg.at(1).ori.extrinsic().sommet()[2] << endl;
+    panoramic_info << correspondance_orimg.at(1).ori.extrinsic().rotation()[0] << endl;
+    panoramic_info << correspondance_orimg.at(1).ori.extrinsic().rotation()[1] << endl;
+    panoramic_info << correspondance_orimg.at(1).ori.extrinsic().rotation()[2] << endl;
+    panoramic_info << correspondance_orimg.at(1).ori.extrinsic().rotation()[3] << endl;
+    panoramic_info << correspondance_orimg.at(1).ori.extrinsic().rotation()[4] << endl;
+    panoramic_info << correspondance_orimg.at(1).ori.extrinsic().rotation()[5] << endl;
+    panoramic_info << correspondance_orimg.at(1).ori.extrinsic().rotation()[6] << endl;
+    panoramic_info << correspondance_orimg.at(1).ori.extrinsic().rotation()[7] << endl;
+    panoramic_info << correspondance_orimg.at(1).ori.extrinsic().rotation()[8] << endl;
 
     panoramic_info.close();
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 3.5.1, 2018-02-05T15:23:25. -->
+<!-- Written by QtCreator 3.5.1, 2018-03-28T14:23:04. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -207,7 +207,7 @@
      <value type="int">14</value>
     </valuelist>
     <value type="QString" key="CMakeProjectManager.CMakeRunConfiguation.Title">virtualView</value>
-    <value type="QString" key="CMakeProjectManager.CMakeRunConfiguration.Arguments"></value>
+    <value type="QString" key="CMakeProjectManager.CMakeRunConfiguration.Arguments">-i /home/mboussaha/data/spherical_panorama/img_file/Rouen-160310_0575-300-00001_0000208.jpg /home/mboussaha/data/spherical_panorama/img_file/Rouen-160310_0575-301-00001_0000208.jpg /home/mboussaha/data/spherical_panorama/img_file/Rouen-160310_0575-302-00001_0000208.jpg /home/mboussaha/data/spherical_panorama/img_file/Rouen-160310_0575-303-00001_0000208.jpg /home/mboussaha/data/spherical_panorama/img_file/Rouen-160310_0575-304-00001_0000208.jpg /home/mboussaha/data/spherical_panorama/img_file/34620.ply</value>
     <value type="QString" key="CMakeProjectManager.CMakeRunConfiguration.UserWorkingDirectory"></value>
     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
